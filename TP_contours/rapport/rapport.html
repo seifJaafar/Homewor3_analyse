@@ -30,6 +30,9 @@
   figure img { max-width: 100%; }
   figcaption { font-size: 9pt; color: #555; margin-top: 3pt; }
   .saut { page-break-before: always; }
+  .grille { display: flex; flex-wrap: wrap; justify-content: space-between; page-break-inside: avoid; }
+  .grille figure { width: 49.3%; margin: 4pt 0; }
+  .grille figure img { border: 1px solid #c9ced6; }
   ul { margin: 3pt 0 6pt 16pt; padding: 0; }
   li { margin: 2pt 0; }
   .note { background: #f4f8fd; border-left: 3px solid #2f6db5; padding: 5pt 8pt; margin: 6pt 0; }
@@ -113,17 +116,25 @@
   <li><code>evaluation.cpp / .hpp</code> : <code>loadReference</code> (lecture et inversion de la vérité terrain, dont les contours sont noirs sur fond blanc), <code>evaluate</code> (les 5 quantités et les 3 mesures) et <code>makeOverlay</code> (superposition couleur) ;</li>
   <li><code>main.cpp</code> : les deux modes du programme.</li>
 </ul>
+<figure><img src="img/build.png" style="width:88%"><figcaption>Figure 1 — Compilation avec CMake : OpenCV 4.6 est trouvé et l'exécutable <code>tp_contours</code> est produit.</figcaption></figure>
 
 <h3>4.1 Mode interactif : <code>tp_contours</code></h3>
 <p>Une fenêtre « Contours » affiche le résultat, sous lequel sont calculés en direct <i>P</i>, <i>TFP</i> et <i>TFN</i>. Sa trackbar <b>Detecteur</b> permet de <b>choisir le détecteur</b> (0 Sobel, 1 Laplace, 2 Canny, 3 les trois côte à côte). Trois fenêtres de trackbars, une par détecteur, permettent de <b>régler les paramètres associés</b>. Les touches <code>n</code> / <code>p</code> font défiler le lot d'images, <code>v</code> bascule entre la carte noir et blanc et la superposition couleur, et <code>s</code> enregistre l'affichage dans <code>results/filtres/</code>. Le calcul n'est refait que si un réglage change.</p>
-<figure><img src="img/interactif.png" style="width:100%"><figcaption>Figure 1 — Mode interactif sur l'image <i>hyena</i>, superposition couleur (vert : correct, rouge : faux positif, bleu : contour manqué).</figcaption></figure>
+<figure><img src="img/noir_blanc.png" style="width:88%"><figcaption>Figure 2 — Lancement du mode interactif : les trois détecteurs sur l'image <i>basket</i> (cartes noir et blanc) avec leurs mesures, et la fenêtre de paramètres de Canny.</figcaption></figure>
+<figure><img src="img/interactif.png" style="width:100%"><figcaption>Figure 3 — Après la touche <code>v</code> et le passage à l'image <i>hyena</i> (touche <code>n</code>) : superposition couleur (vert : correct, rouge : faux positif, bleu : contour manqué).</figcaption></figure>
+<div class="grille">
+  <figure><img src="img/sobel_seul.png"><figcaption>Detecteur = 0 : Sobel seul (P 21,2 %, TFP 72,1 %, TFN 6,6 %)</figcaption></figure>
+  <figure><img src="img/canny_seul.png"><figcaption>Detecteur = 2 : Canny seul (P 19,8 %, TFP 60,4 %, TFN 19,8 %)</figcaption></figure>
+<p style="text-align:center;font-size:9pt;color:#555;margin-top:0;width:100%">Figure 4 — Choix du détecteur avec la trackbar <b>Detecteur</b> de la fenêtre « Contours » (image <i>basket</i>).</p>
+</div>
 
 <h3>4.2 Mode batch : <code>tp_contours --batch</code></h3>
 <p>Ce mode <b>traite le lot des 40 images</b> avec les paramètres par défaut. Pour chaque image et chaque détecteur, il enregistre la carte de contours (<code>results/batch/&lt;détecteur&gt;/</code>), un montage original | référence | Sobel | Laplace | Canny (<code>results/comparaison/</code>) et une ligne de <code>results/batch/resultats.csv</code> contenant les 5 quantités et les 3 mesures. La dernière ligne contient les moyennes.</p>
-<figure><img src="img/batch.png" style="width:82%"><figcaption>Figure 2 — Exécution du mode batch : performance par image et moyennes.</figcaption></figure>
+<figure><img src="img/batch.png" style="width:82%"><figcaption>Figure 5 — Exécution du mode batch : performance par image et moyennes.</figcaption></figure>
 
 <h3>4.3 Étude des paramètres : <code>scripts/balayage.py</code></h3>
 <p>Ce script Python (OpenCV) reproduit exactement les détecteurs et la métrique du programme C++ : il retrouve au centième près les moyennes du mode batch. Il fait varier le seuil et le flou sur les 40 images et produit les courbes de la section 7 (<code>results/parametres/</code>).</p>
+<figure><img src="img/balayage.png" style="width:88%"><figcaption>Figure 6 — Exécution de <code>scripts/balayage.py</code> : meilleurs réglages globaux, réglage optimal par image et effet de la tolérance.</figcaption></figure>
 
 <h2>5. Méthode d'évaluation</h2>
 <p>Pour comparer une image de contours calculée à sa référence, nous utilisons les cinq quantités du sujet :</p>
@@ -164,16 +175,27 @@
 </ul>
 
 <h2>7. Influence des paramètres</h2>
-<figure><img src="../results/parametres/performance_vs_seuil.png" style="width:100%"><figcaption>Figure 3 — Performance moyenne P en fonction du seuil, pour quatre tailles de flou (Canny : seuil bas = seuil haut / 3).</figcaption></figure>
-<figure><img src="../results/parametres/compromis_tfp_tfn.png" style="width:100%"><figcaption>Figure 4 — Compromis TFP / TFN en fonction du seuil, au meilleur flou.</figcaption></figure>
+<h3>7.1 Réglage en direct dans le mode interactif</h3>
+<p>Les captures ci-dessous montrent l'effet des trackbars sur l'image <i>basket</i>. Elle est difficile, car l'herbe est très texturée. Les valeurs par défaut donnent Sobel P = 21,2 % et Canny P = 19,8 %.</p>
+<div class="grille">
+  <figure><img src="img/sobel_seuil30.png"><figcaption>(a) Sobel, seuil 70 → 30 : l'herbe passe en rouge. P 10,5 %, TFP 89,3 %, TFN 0,3 %</figcaption></figure>
+  <figure><img src="img/sobel_seuil110.png"><figcaption>(b) Sobel, seuil 70 → 110 : la texture disparaît, des contours passent en bleu. P 30,7 %, TFP 34,4 %, TFN 35,0 %</figcaption></figure>
+  <figure><img src="img/sobel_sansflou.png"><figcaption>(c) Sobel sans flou (blur 5 → 1) : le bruit augmente. P 14,4 %, TFP 79,7 %, TFN 5,9 %</figcaption></figure>
+  <figure><img src="img/canny_high300.png"><figcaption>(d) Canny, seuil haut 150 → 300 : presque plus de faux positifs, mais 90 % de contours manqués. P 7,9 %, TFP 1,4 %, TFN 90,7 %</figcaption></figure>
+<p style="text-align:center;font-size:9pt;color:#555;margin-top:0;width:100%">Figure 7 — Modification des paramètres avec les trackbars (vert : correct, rouge : faux positif, bleu : manqué).</p>
+</div>
+<p>Le compromis est bien visible : baisser le seuil fait passer les faux négatifs aux faux positifs, et inversement. On note aussi que, pour <i>basket</i>, un seuil de Sobel de 110 donne un meilleur score (30,7 %) que le seuil global de 70 : le meilleur réglage dépend de l'image. C'est ce que quantifie le réglage « oracle » plus bas.</p>
+<h3>7.2 Étude sur les 40 images</h3>
+<figure><img src="../results/parametres/performance_vs_seuil.png" style="width:100%"><figcaption>Figure 8 — Performance moyenne P en fonction du seuil, pour quatre tailles de flou (Canny : seuil bas = seuil haut / 3).</figcaption></figure>
+<figure><img src="../results/parametres/compromis_tfp_tfn.png" style="width:100%"><figcaption>Figure 9 — Compromis TFP / TFN en fonction du seuil, au meilleur flou.</figcaption></figure>
 <ul>
-  <li><b>Le seuil règle le compromis entre faux positifs et faux négatifs.</b> Un seuil bas garde la texture : le TFP tend vers 90 %. Un seuil élevé supprime les vrais contours : le TFN tend vers 100 %. P passe par un maximum proche du croisement des deux courbes (figure 4).</li>
+  <li><b>Le seuil règle le compromis entre faux positifs et faux négatifs.</b> Un seuil bas garde la texture : le TFP tend vers 90 %. Un seuil élevé supprime les vrais contours : le TFN tend vers 100 %. P passe par un maximum proche du croisement des deux courbes (figure 9).</li>
   <li><b>Le flou améliore nettement le résultat.</b> Pour Sobel, le meilleur P passe de 33,2 % sans flou à 40,4 % avec un flou 7×7. Pour Laplace, il passe de 18,0 % à 22,5 % avec un flou 5×5 ; au-delà, le flou 7×7 refait baisser P (21,5 %) car les contours s'étalent. C'est pour Canny que le gain est le plus fort : de 26,0 % à 31,5 %.</li>
   <li><b>Sobel et Laplace sont robustes au flou</b> : grâce à la normalisation, leur meilleur seuil change peu (60 à 70 pour Sobel, 40 pour Laplace). Pour <b>Canny</b>, dont les seuils sont absolus, le meilleur seuil haut passe de 350 sans flou à 150 avec un flou 7×7, car le flou diminue la norme du gradient. Les paramètres de Canny doivent donc être réglés ensemble.</li>
-  <li><b>Seuils de l'hystérésis</b> (figure 5) : la zone favorable forme une diagonale autour d'un seuil haut de 125 à 175. Le meilleur couple trouvé (low 70, high 125, P = 31,9 %) n'est que très légèrement meilleur que le réglage par défaut (50 / 150, P = 31,5 %).</li>
+  <li><b>Seuils de l'hystérésis</b> (figure 10) : la zone favorable forme une diagonale autour d'un seuil haut de 125 à 175. Le meilleur couple trouvé (low 70, high 125, P = 31,9 %) n'est que très légèrement meilleur que le réglage par défaut (50 / 150, P = 31,5 %).</li>
   <li><b>Réglage par image</b> : si l'on choisit le meilleur seuil pour chaque image (« oracle »), la performance moyenne n'augmente que de 2 à 4 points (Sobel 42,7 %, Laplace 24,7 %, Canny 35,7 %). Un réglage global est donc suffisant : la difficulté vient surtout du contenu des images, pas du réglage.</li>
 </ul>
-<figure><img src="../results/parametres/canny_low_high.png" style="width:70%"><figcaption>Figure 5 — Canny (flou 7×7) : performance moyenne selon le seuil bas et le seuil haut.</figcaption></figure>
+<figure><img src="../results/parametres/canny_low_high.png" style="width:70%"><figcaption>Figure 10 — Canny (flou 7×7) : performance moyenne selon le seuil bas et le seuil haut.</figcaption></figure>
 
 <div style="page-break-inside:avoid"><table style="width:85%;margin-left:auto;margin-right:auto">
 <thead><tr><th></th><th>meilleur réglage global</th><th>P global</th><th>P oracle (par image)</th></tr></thead>
@@ -188,9 +210,9 @@
 <h2 class="saut">8. Interprétation et comparaison des trois détecteurs</h2>
 
 <h3>8.1 Bonne détection</h3>
-<figure><img src="../results/comparaison/hyena.png" style="width:100%"><figcaption>Figure 6 — <i>hyena</i> : original, référence, puis Sobel, Laplace et Canny (vert : correct, rouge : faux positif, bleu : manqué).</figcaption></figure>
+<figure><img src="../results/comparaison/hyena.png" style="width:100%"><figcaption>Figure 11 — <i>hyena</i> : original, référence, puis Sobel, Laplace et Canny (vert : correct, rouge : faux positif, bleu : manqué).</figcaption></figure>
 <p>Sur <i>hyena</i>, le fond est flou et uniforme : les trois détecteurs retrouvent bien les silhouettes. Sobel atteint 66,3 % et Canny 52,6 %. Laplace (37,0 %) répond déjà fortement à l'herbe du premier plan. Les contours manqués (en bleu) sont surtout des contours internes peu contrastés, entre les pattes ou entre deux animaux de même teinte.</p>
-<figure><img src="../results/comparaison/bear_7.png" style="width:100%"><figcaption>Figure 7 — <i>bear_7</i> : le cas le plus difficile du lot.</figcaption></figure>
+<figure><img src="../results/comparaison/bear_7.png" style="width:100%"><figcaption>Figure 12 — <i>bear_7</i> : le cas le plus difficile du lot.</figcaption></figure>
 <p>Sur <i>bear_7</i>, le gravier derrière l'ours produit des gradients aussi forts que la silhouette elle-même. Aucun seuil ne peut séparer les deux : les trois détecteurs passent sous 10 % de performance, avec 85 à 88 % de faux positifs. C'est la limite principale des détecteurs locaux : ils mesurent une variation d'intensité, pas la frontière d'un objet. Les images de chèvres et d'ours dans l'herbe ou les rochers donnent les plus mauvais scores pour la même raison.</p>
 
 <h3>8.2 Bonne localisation</h3>
