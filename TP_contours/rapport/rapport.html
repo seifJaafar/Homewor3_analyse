@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>TP Contours — Rapport</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+  body { font-family: "Segoe UI", Calibri, Arial, sans-serif; font-size: 10.5pt; line-height: 1.45; color: #1d1d1f; }
+  h1 { font-size: 22pt; margin: 0 0 4pt; }
+  h2 { font-size: 14.5pt; margin: 20pt 0 6pt; border-bottom: 1.5px solid #2f6db5; padding-bottom: 2pt; color: #1f4f8a; page-break-after: avoid; }
+  h3 { font-size: 11.5pt; margin: 12pt 0 4pt; page-break-after: avoid; }
+  p { margin: 4pt 0 6pt; text-align: justify; }
+  code { font-family: Consolas, monospace; font-size: 9.5pt; background: #f1f3f6; padding: 0 3px; border-radius: 3px; }
+  pre { font-family: Consolas, monospace; font-size: 9pt; background: #f1f3f6; padding: 6pt 8pt; border-radius: 4px; white-space: pre-wrap; }
+  .titre { text-align: center; margin: 40mm 0 20mm; }
+  .titre .sous { font-size: 14pt; color: #2f6db5; margin-top: 6pt; }
+  .titre .info { margin-top: 26pt; font-size: 11pt; color: #555; }
+  .formule { text-align: center; font-family: "Cambria Math", Cambria, serif; font-size: 11.5pt; margin: 6pt 0; }
+  table { border-collapse: collapse; width: 100%; margin: 6pt 0 10pt; font-size: 9.5pt; page-break-inside: auto; }
+  tr { page-break-inside: avoid; }
+  th, td { border: 1px solid #c9ced6; padding: 3pt 5pt; text-align: center; }
+  thead th { background: #e8eef7; }
+  tbody th { text-align: left; font-weight: 600; background: #fafbfc; }
+  td.best { background: #dff1df; font-weight: 700; }
+  tr.moy th, tr.moy td { background: #e8eef7; font-weight: 700; }
+  table.petit { font-size: 8.4pt; }
+  table.petit th, table.petit td { padding: 1.5pt 3pt; }
+  td.l, th.l { text-align: left; }
+  figure { margin: 8pt 0 10pt; text-align: center; page-break-inside: avoid; }
+  figure img { max-width: 100%; }
+  figcaption { font-size: 9pt; color: #555; margin-top: 3pt; }
+  .saut { page-break-before: always; }
+  ul { margin: 3pt 0 6pt 16pt; padding: 0; }
+  li { margin: 2pt 0; }
+  .note { background: #f4f8fd; border-left: 3px solid #2f6db5; padding: 5pt 8pt; margin: 6pt 0; }
+</style>
+</head>
+<body>
+
+<div class="titre">
+  <h1>TP Contours</h1>
+  <div class="sous">Comparaison quantitative de trois détecteurs de contours : Sobel, Laplace et Canny</div>
+  <div class="info">Analyse d'image — C++17 / OpenCV 4<br>Base de contours RUG (Université de Groningue), 40 images<br><br>Seif Jaafar</div>
+</div>
+
+<h2>Sommaire</h2>
+<ol>
+  <li>Introduction</li>
+  <li>Présentation théorique des détecteurs</li>
+  <li>Fonctions OpenCV utilisées et lien avec les paramètres</li>
+  <li>Le programme</li>
+  <li>Méthode d'évaluation</li>
+  <li>Résultats</li>
+  <li>Influence des paramètres</li>
+  <li>Interprétation et comparaison des trois détecteurs</li>
+  <li>Conclusion</li>
+  <li>Annexe : résultats détaillés par image et reproduction</li>
+</ol>
+
+<h2 class="saut">1. Introduction</h2>
+<p>L'objectif de ce TP est de comparer trois détecteurs de contours, Sobel, Laplace et Canny, sur une série d'images. Un contour correspond à une variation brusque de l'intensité lumineuse. Chaque détecteur estime cette variation différemment, et chacun dépend de paramètres (taille du flou, taille du noyau, seuils) qu'il faut régler.</p>
+<p>Pour que la comparaison soit objective, nous confrontons les cartes de contours obtenues à des <b>contours de référence tracés à la main</b>, issus de la base de l'Université de Groningue (RUG) : 40 images naturelles en niveaux de gris (animaux et objets dans leur environnement), chacune accompagnée de sa vérité terrain. Nous en déduisons trois mesures : la performance <i>P</i>, le taux de faux positifs <i>TFP</i> et le taux de faux négatifs <i>TFN</i>.</p>
+<p>Le programme, écrit en C++ avec OpenCV, permet de choisir le détecteur, de régler ses paramètres avec des trackbars et de traiter le lot complet des 40 images. Un script Python complémentaire fait varier les paramètres sur tout le lot pour étudier leur influence.</p>
+
+<h2>2. Présentation théorique des détecteurs</h2>
+
+<h3>2.1 Pré-traitement : le flou gaussien</h3>
+<p>La dérivation amplifie le bruit, qui contient des hautes fréquences. Les trois détecteurs commencent donc par un lissage gaussien de taille <i>k×k</i> :</p>
+<div class="formule">G<sub>σ</sub>(x, y) = (1 / 2πσ²) · exp(−(x² + y²) / 2σ²)</div>
+<p>Plus le noyau est grand, plus le bruit et la texture fine sont atténués, mais plus les contours sont étalés et les détails fins perdus.</p>
+
+<h3>2.2 Sobel : le gradient (dérivée première)</h3>
+<p>Le contour est situé là où la norme du gradient de l'image est forte. Sobel approche les dérivées partielles par convolution avec deux noyaux 3×3, qui combinent une dérivation dans une direction et un lissage dans l'autre :</p>
+<div class="formule">K<sub>x</sub> = [−1 0 1 ; −2 0 2 ; −1 0 1] &nbsp;&nbsp;&nbsp; K<sub>y</sub> = K<sub>x</sub><sup>T</sup></div>
+<div class="formule">G<sub>x</sub> = K<sub>x</sub> ∗ I, &nbsp; G<sub>y</sub> = K<sub>y</sub> ∗ I, &nbsp; |∇I| = √(G<sub>x</sub>² + G<sub>y</sub>²), &nbsp; θ = atan2(G<sub>y</sub>, G<sub>x</sub>)</div>
+<p>On obtient une carte binaire en seuillant |∇I|. La réponse est forte sur toute la largeur de la transition : les contours de Sobel sont donc <b>épais</b> (plusieurs pixels), et le détecteur reste sensible à la texture si le seuil est bas.</p>
+
+<h3>2.3 Laplace : la dérivée seconde</h3>
+<p>Le Laplacien est la somme des dérivées secondes. Un contour correspond à un passage par zéro du Laplacien, encadré par deux extrema de signes opposés :</p>
+<div class="formule">ΔI = ∂²I/∂x² + ∂²I/∂y² &nbsp;&nbsp;&nbsp; noyau 3×3 : [0 1 0 ; 1 −4 1 ; 0 1 0]</div>
+<p>Le Laplacien est isotrope (il ne dépend pas de l'orientation du contour) et ne demande qu'une convolution. En revanche, la dérivée seconde amplifie encore plus le bruit que la dérivée première. Dans notre programme, on seuille |ΔI| : on garde les deux lobes de part et d'autre du contour, ce qui donne des contours doubles et beaucoup de réponses dans les zones texturées.</p>
+
+<h3>2.4 Canny : un détecteur optimal</h3>
+<p>Canny (1986) a défini trois critères : <b>bonne détection</b> (peu de faux positifs et de faux négatifs), <b>bonne localisation</b> (le contour détecté est au plus près du contour réel) et <b>réponse unique</b> (un seul pixel par contour). L'algorithme se déroule en quatre étapes :</p>
+<ol>
+  <li>lissage gaussien ;</li>
+  <li>calcul du gradient (norme et direction) par Sobel ;</li>
+  <li><b>suppression des non-maxima</b> : un pixel n'est conservé que s'il est un maximum local de |∇I| dans la direction du gradient, ce qui amincit les contours à 1 pixel ;</li>
+  <li><b>seuillage par hystérésis</b> avec deux seuils : les pixels au-dessus du seuil haut sont des contours sûrs ; ceux entre les deux seuils ne sont gardés que s'ils sont reliés à un contour sûr ; les autres sont éliminés.</li>
+</ol>
+<p>L'hystérésis permet de suivre un contour faible relié à un contour fort tout en rejetant les réponses isolées. Canny conseille un rapport haut/bas compris entre 2 et 3.</p>
+
+<h2>3. Fonctions OpenCV utilisées et lien avec les paramètres</h2>
+<table>
+<thead><tr><th class="l">Fonction OpenCV</th><th class="l">Rôle dans la théorie</th><th class="l">Paramètre réglable (trackbar)</th></tr></thead>
+<tbody>
+<tr><td class="l"><code>cv::GaussianBlur(src, dst, Size(k,k), 0)</code></td><td class="l">Lissage gaussien (§2.1). σ = 0 : OpenCV le déduit de <i>k</i> (σ = 0,3·((k−1)·0,5 − 1) + 0,8).</td><td class="l"><b>blur</b> = 2·pos + 1 (1 = pas de flou, puis 3, 5, … 15)</td></tr>
+<tr><td class="l"><code>cv::Sobel(img, gx, CV_32F, 1, 0, ksize)</code><br><code>cv::Sobel(img, gy, CV_32F, 0, 1, ksize)</code></td><td class="l">Dérivées partielles G<sub>x</sub>, G<sub>y</sub> (§2.2). Le résultat est en flottant pour garder les valeurs négatives.</td><td class="l"><b>ksize</b> ∈ {1, 3, 5, 7} : taille du noyau de dérivation</td></tr>
+<tr><td class="l"><code>cv::magnitude(gx, gy, mag)</code></td><td class="l">Norme du gradient √(G<sub>x</sub>² + G<sub>y</sub>²)</td><td class="l">—</td></tr>
+<tr><td class="l"><code>cv::Laplacian(img, lap, CV_32F, ksize)</code> puis <code>cv::abs</code></td><td class="l">Laplacien ΔI et sa valeur absolue (§2.3)</td><td class="l"><b>ksize</b> ∈ {1, 3, 5, 7}</td></tr>
+<tr><td class="l"><code>cv::normalize(rep, n, 0, 255, NORM_MINMAX)</code><br><code>cv::compare(n, seuil, out, CMP_GT)</code></td><td class="l">Ramène la réponse entre 0 et 255 puis la binarise : 255 si la valeur dépasse le seuil</td><td class="l"><b>seuil</b> ∈ [0, 255] (Sobel et Laplace)</td></tr>
+<tr><td class="l"><code>cv::Canny(img, out, low, high, aperture)</code></td><td class="l">Les étapes 2 à 4 de Canny (§2.4) : gradient, non-maxima, hystérésis</td><td class="l"><b>low</b>, <b>high</b> ∈ [0, 1000] : seuils de l'hystérésis ; <b>aperture</b> ∈ {3, 5, 7} : taille du Sobel interne</td></tr>
+<tr><td class="l"><code>cv::dilate(masque, d, carré 3×3)</code><br><code>cv::countNonZero</code></td><td class="l">Tolérance de 1 pixel (voisinage 3×3) et comptage des 5 quantités (§5)</td><td class="l">—</td></tr>
+<tr><td class="l"><code>cv::createTrackbar</code>, <code>cv::getTrackbarPos</code>, <code>cv::imshow</code>, <code>cv::waitKey</code></td><td class="l">Interface interactive</td><td class="l">—</td></tr>
+</tbody>
+</table>
+<p class="note">La normalisation min-max rend le seuil de Sobel et de Laplace relatif à la réponse maximale de chaque image : un même seuil s'adapte ainsi un peu au contraste de l'image. Pour Canny, les seuils <i>low</i> et <i>high</i> sont absolus : ils s'appliquent directement à la norme du gradient calculée par OpenCV. C'est pourquoi le meilleur seuil de Canny dépend beaucoup du flou (voir §7).</p>
+
+<h2>4. Le programme</h2>
+<p>Le code source se trouve dans <code>TP_contours/src/</code> et se compile avec CMake :</p>
+<ul>
+  <li><code>detecteurs.cpp / .hpp</code> : <code>detecterSobel</code>, <code>detecterLaplace</code>, <code>detecterCanny</code>. Chacune prend une image en niveaux de gris et rend une carte binaire (255 = contour). Les paramètres sont regroupés dans des structures dont les valeurs par défaut sont les meilleures trouvées sur le lot ;</li>
+  <li><code>evaluation.cpp / .hpp</code> : <code>loadReference</code> (lecture et inversion de la vérité terrain, dont les contours sont noirs sur fond blanc), <code>evaluate</code> (les 5 quantités et les 3 mesures) et <code>makeOverlay</code> (superposition couleur) ;</li>
+  <li><code>main.cpp</code> : les deux modes du programme.</li>
+</ul>
+
+<h3>4.1 Mode interactif : <code>tp_contours</code></h3>
+<p>Une fenêtre « Contours » affiche le résultat, sous lequel sont calculés en direct <i>P</i>, <i>TFP</i> et <i>TFN</i>. Sa trackbar <b>Detecteur</b> permet de <b>choisir le détecteur</b> (0 Sobel, 1 Laplace, 2 Canny, 3 les trois côte à côte). Trois fenêtres de trackbars, une par détecteur, permettent de <b>régler les paramètres associés</b>. Les touches <code>n</code> / <code>p</code> font défiler le lot d'images, <code>v</code> bascule entre la carte noir et blanc et la superposition couleur, et <code>s</code> enregistre l'affichage dans <code>results/filtres/</code>. Le calcul n'est refait que si un réglage change.</p>
+<figure><img src="img/interactif.png" style="width:100%"><figcaption>Figure 1 — Mode interactif sur l'image <i>hyena</i>, superposition couleur (vert : correct, rouge : faux positif, bleu : contour manqué).</figcaption></figure>
+
+<h3>4.2 Mode batch : <code>tp_contours --batch</code></h3>
+<p>Ce mode <b>traite le lot des 40 images</b> avec les paramètres par défaut. Pour chaque image et chaque détecteur, il enregistre la carte de contours (<code>results/batch/&lt;détecteur&gt;/</code>), un montage original | référence | Sobel | Laplace | Canny (<code>results/comparaison/</code>) et une ligne de <code>results/batch/resultats.csv</code> contenant les 5 quantités et les 3 mesures. La dernière ligne contient les moyennes.</p>
+<figure><img src="img/batch.png" style="width:82%"><figcaption>Figure 2 — Exécution du mode batch : performance par image et moyennes.</figcaption></figure>
+
+<h3>4.3 Étude des paramètres : <code>scripts/balayage.py</code></h3>
+<p>Ce script Python (OpenCV) reproduit exactement les détecteurs et la métrique du programme C++ : il retrouve au centième près les moyennes du mode batch. Il fait varier le seuil et le flou sur les 40 images et produit les courbes de la section 7 (<code>results/parametres/</code>).</p>
+
+<h2>5. Méthode d'évaluation</h2>
+<p>Pour comparer une image de contours calculée à sa référence, nous utilisons les cinq quantités du sujet :</p>
+<ul>
+  <li><b>contours_détectés</b> : nombre de pixels de contour dans l'image calculée ;</li>
+  <li><b>contours_référence</b> : nombre de pixels de contour dans la référence ;</li>
+  <li><b>contours_corrects</b> : pixels détectés qui sont aussi des contours de la référence ;</li>
+  <li><b>faux_positifs</b> = contours_détectés − contours_corrects ;</li>
+  <li><b>faux_négatifs</b> : pixels de la référence non détectés.</li>
+</ul>
+<p>On note T = corrects + faux_positifs + faux_négatifs, et on calcule :</p>
+<div class="formule">P = corrects / T &nbsp;&nbsp;&nbsp; TFP = faux_positifs / T &nbsp;&nbsp;&nbsp; TFN = faux_négatifs / T &nbsp;&nbsp;&nbsp; (P + TFP + TFN = 1)</div>
+
+<h3>5.1 Tolérance par voisinage 3×3</h3>
+<p>Un tracé à la main n'est jamais exact au pixel près. Comme le suggère le sujet, un pixel détecté est compté <b>correct s'il existe un contour de référence dans son voisinage 3×3</b>. En pratique, on dilate la référence avec un élément structurant carré 3×3 et on fait un ET logique avec la détection. Symétriquement, un pixel de référence est un <b>faux négatif s'il n'y a aucune détection dans son voisinage 3×3</b>, ce qui revient à dilater la détection.</p>
+
+<h3>5.2 Atouts et faiblesses de cette méthode de comparaison</h3>
+<ul>
+  <li><b>Atouts</b> : la mesure est simple, objective et reproductible. Elle résume en un nombre le compromis entre faux positifs et faux négatifs (P pénalise les deux), et elle permet de comparer des détecteurs et des images différents. La tolérance 3×3 évite de pénaliser un décalage d'un pixel.</li>
+  <li><b>Faiblesse 1 : l'épaisseur des contours</b>. Les corrects sont comptés parmi les pixels <i>détectés</i>. Une bande de trois pixels d'épaisseur le long d'un contour de référence compte donc trois corrects pour un seul pixel de référence. Pour <i>basket</i>, Sobel a 7 821 corrects pour seulement 6 938 pixels de référence. Cela avantage Sobel face à Canny, qui ne produit qu'un pixel par contour.</li>
+  <li><b>Faiblesse 2 : la référence n'est pas exhaustive</b>. Les annotateurs n'ont tracé que les contours des objets, pas la texture du fond (herbe, gravier, eau). Un vrai changement d'intensité dans le fond est donc compté comme faux positif.</li>
+  <li><b>Faiblesse 3 : la sensibilité à la tolérance</b>. Sans tolérance (position exacte), les performances sont divisées par 2,5 à 4 (tableau 3). Le choix du voisinage change donc beaucoup les chiffres, même si le classement des détecteurs reste le même.</li>
+  <li><b>Moyenne des P</b> : nous faisons la moyenne des P de chaque image, ce qui donne le même poids à chaque image quelle que soit sa quantité de contours.</li>
+</ul>
+
+<h2 class="saut">6. Résultats</h2>
+<p>Paramètres utilisés (les meilleurs trouvés sur le lot, voir §7) : <b>Sobel</b> blur 5, ksize 3, seuil 70 ; <b>Laplace</b> blur 5, ksize 3, seuil 40 ; <b>Canny</b> blur 7, low 50, high 150, aperture 3.</p>
+<table>
+<thead><tr><th></th><th>détectés</th><th>référence</th><th>corrects</th><th>faux positifs</th><th>faux négatifs</th><th>P (%)</th><th>TFP (%)</th><th>TFN (%)</th></tr></thead>
+<tbody><tr><th>Sobel</th><td>10 946</td><td>5 740</td><td>5 235</td><td>5 711</td><td>2 805</td><td><b>39,4</b></td><td><b>37,8</b></td><td><b>22,8</b></td></tr><tr><th>Laplace</th><td>20 944</td><td>5 740</td><td>4 866</td><td>16 078</td><td>2 307</td><td><b>22,5</b></td><td><b>63,8</b></td><td><b>13,6</b></td></tr><tr><th>Canny</th><td>6 891</td><td>5 740</td><td>2 880</td><td>4 011</td><td>2 721</td><td><b>31,5</b></td><td><b>36,1</b></td><td><b>32,5</b></td></tr></tbody>
+</table>
+<p style="text-align:center;font-size:9pt;color:#555">Tableau 1 — Valeurs moyennes sur les 40 images (quantités en pixels). Le détail par image est en annexe (tableau 5).</p>
+<ul>
+  <li><b>Sobel</b> obtient la meilleure performance moyenne (39,4 %) et le meilleur P sur <b>38 images sur 40</b>. Canny gagne sur les deux autres (<i>bear_5</i> et <i>elephants_2</i>).</li>
+  <li><b>Canny</b> est deuxième (31,5 %). Il a le plus faible taux de faux positifs (36,1 %) mais le plus fort taux de faux négatifs (32,5 %) : il détecte peu de pixels (6 891 en moyenne, contre 10 946 pour Sobel).</li>
+  <li><b>Laplace</b> est nettement dernier (22,5 %). Il détecte près de quatre fois plus de pixels que la référence n'en contient, d'où un TFP de 63,9 %. Il a en revanche le TFN le plus bas : il manque peu de contours.</li>
+  <li>La performance varie beaucoup d'une image à l'autre (écart-type d'environ 11 à 12 points). La meilleure image pour tous les détecteurs est <i>hyena</i> ou <i>golfcart</i> (fond uniforme, objets contrastés), la plus mauvaise est <i>bear_7</i> (fond de gravier très texturé).</li>
+</ul>
+
+<h2>7. Influence des paramètres</h2>
+<figure><img src="../results/parametres/performance_vs_seuil.png" style="width:100%"><figcaption>Figure 3 — Performance moyenne P en fonction du seuil, pour quatre tailles de flou (Canny : seuil bas = seuil haut / 3).</figcaption></figure>
+<figure><img src="../results/parametres/compromis_tfp_tfn.png" style="width:100%"><figcaption>Figure 4 — Compromis TFP / TFN en fonction du seuil, au meilleur flou.</figcaption></figure>
+<ul>
+  <li><b>Le seuil règle le compromis entre faux positifs et faux négatifs.</b> Un seuil bas garde la texture : le TFP tend vers 90 %. Un seuil élevé supprime les vrais contours : le TFN tend vers 100 %. P passe par un maximum proche du croisement des deux courbes (figure 4).</li>
+  <li><b>Le flou améliore nettement le résultat.</b> Pour Sobel, le meilleur P passe de 33,2 % sans flou à 40,4 % avec un flou 7×7. Pour Laplace, il passe de 18,0 % à 22,5 % avec un flou 5×5 ; au-delà, le flou 7×7 refait baisser P (21,5 %) car les contours s'étalent. C'est pour Canny que le gain est le plus fort : de 26,0 % à 31,5 %.</li>
+  <li><b>Sobel et Laplace sont robustes au flou</b> : grâce à la normalisation, leur meilleur seuil change peu (60 à 70 pour Sobel, 40 pour Laplace). Pour <b>Canny</b>, dont les seuils sont absolus, le meilleur seuil haut passe de 350 sans flou à 150 avec un flou 7×7, car le flou diminue la norme du gradient. Les paramètres de Canny doivent donc être réglés ensemble.</li>
+  <li><b>Seuils de l'hystérésis</b> (figure 5) : la zone favorable forme une diagonale autour d'un seuil haut de 125 à 175. Le meilleur couple trouvé (low 70, high 125, P = 31,9 %) n'est que très légèrement meilleur que le réglage par défaut (50 / 150, P = 31,5 %).</li>
+  <li><b>Réglage par image</b> : si l'on choisit le meilleur seuil pour chaque image (« oracle »), la performance moyenne n'augmente que de 2 à 4 points (Sobel 42,7 %, Laplace 24,7 %, Canny 35,7 %). Un réglage global est donc suffisant : la difficulté vient surtout du contenu des images, pas du réglage.</li>
+</ul>
+<figure><img src="../results/parametres/canny_low_high.png" style="width:70%"><figcaption>Figure 5 — Canny (flou 7×7) : performance moyenne selon le seuil bas et le seuil haut.</figcaption></figure>
+
+<div style="page-break-inside:avoid"><table style="width:85%;margin-left:auto;margin-right:auto">
+<thead><tr><th></th><th>meilleur réglage global</th><th>P global</th><th>P oracle (par image)</th></tr></thead>
+<tbody>
+<tr><th>Sobel</th><td>blur 7, seuil 70</td><td>40,4 %</td><td>42,7 %</td></tr>
+<tr><th>Laplace</th><td>blur 5, seuil 40</td><td>22,5 %</td><td>24,7 %</td></tr>
+<tr><th>Canny</th><td>blur 7, low 70, high 125</td><td>31,9 %</td><td>35,7 %</td></tr>
+</tbody>
+</table>
+<p style="text-align:center;font-size:9pt;color:#555">Tableau 2 — Meilleurs réglages trouvés par balayage (ksize = aperture = 3). Les valeurs par défaut du programme en sont très proches.</p></div>
+
+<h2 class="saut">8. Interprétation et comparaison des trois détecteurs</h2>
+
+<h3>8.1 Bonne détection</h3>
+<figure><img src="../results/comparaison/hyena.png" style="width:100%"><figcaption>Figure 6 — <i>hyena</i> : original, référence, puis Sobel, Laplace et Canny (vert : correct, rouge : faux positif, bleu : manqué).</figcaption></figure>
+<p>Sur <i>hyena</i>, le fond est flou et uniforme : les trois détecteurs retrouvent bien les silhouettes. Sobel atteint 66,3 % et Canny 52,6 %. Laplace (37,0 %) répond déjà fortement à l'herbe du premier plan. Les contours manqués (en bleu) sont surtout des contours internes peu contrastés, entre les pattes ou entre deux animaux de même teinte.</p>
+<figure><img src="../results/comparaison/bear_7.png" style="width:100%"><figcaption>Figure 7 — <i>bear_7</i> : le cas le plus difficile du lot.</figcaption></figure>
+<p>Sur <i>bear_7</i>, le gravier derrière l'ours produit des gradients aussi forts que la silhouette elle-même. Aucun seuil ne peut séparer les deux : les trois détecteurs passent sous 10 % de performance, avec 85 à 88 % de faux positifs. C'est la limite principale des détecteurs locaux : ils mesurent une variation d'intensité, pas la frontière d'un objet. Les images de chèvres et d'ours dans l'herbe ou les rochers donnent les plus mauvais scores pour la même raison.</p>
+
+<h3>8.2 Bonne localisation</h3>
+<p>Canny est le seul détecteur qui produit des contours d'un pixel d'épaisseur, placés sur le maximum du gradient grâce à la suppression des non-maxima. Sa localisation est donc la meilleure : visuellement, ses contours sont fins et continus, et ils suivent fidèlement le tracé de référence. Sobel produit des bandes de 2 à 4 pixels centrées sur le contour, et Laplace des contours doubles (un de chaque côté du passage par zéro). L'effet de la tolérance confirme cette analyse : en position exacte, le rapport entre Canny et Sobel passe de 0,80 à 0,87, car Canny perd relativement moins quand on exige la position exacte.</p>
+<div style="page-break-inside:avoid"><table style="width:85%;margin-left:auto;margin-right:auto">
+<thead><tr><th></th><th>P avec voisinage 3×3</th><th>P en position exacte</th><th>TFN en position exacte</th></tr></thead>
+<tbody>
+<tr><th>Sobel</th><td>39,4 %</td><td>14,9 %</td><td>27,2 %</td></tr>
+<tr><th>Laplace</th><td>22,5 %</td><td>5,9 %</td><td>20,9 %</td></tr>
+<tr><th>Canny</th><td>31,5 %</td><td>12,9 %</td><td>42,2 %</td></tr>
+</tbody>
+</table>
+<p style="text-align:center;font-size:9pt;color:#555">Tableau 3 — Effet de la tolérance (paramètres par défaut, moyenne sur les 40 images).</p></div>
+
+<h3>8.3 La « meilleure méthode »</h3>
+<p>Selon la mesure P demandée, <b>Sobel est le meilleur détecteur</b> sur ce lot, devant Canny puis Laplace. Ce classement doit cependant être nuancé :</p>
+<ul>
+  <li>une partie de l'avance de Sobel vient de l'épaisseur de ses contours, que la mesure récompense (faiblesse 1 du §5.2) ;</li>
+  <li>Canny est le meilleur pour la <b>localisation</b> et la <b>réponse unique</b>. Ce sont les critères qui comptent lorsque les contours servent ensuite à mesurer une forme, à vectoriser ou à suivre un objet. Il a aussi le taux de faux positifs le plus faible ;</li>
+  <li>Laplace est clairement le moins adapté à des images naturelles : la dérivée seconde amplifie la texture et le bruit, et on obtient des contours doubles. Il reste intéressant pour son faible TFN et sa simplicité (une seule convolution, isotrope).</li>
+</ul>
+<p>Si l'on veut des contours exploitables (fins, continus, sans bruit), nous recommandons <b>Canny avec un flou 7×7 et des seuils autour de 50 / 150</b>. Si seule compte la mesure P du sujet, Sobel avec un flou 5 à 7 et un seuil de 70 donne le meilleur score.</p>
+
+<h3>8.4 Synthèse</h3>
+<table>
+<thead><tr><th></th><th>Sobel</th><th>Laplace</th><th>Canny</th></tr></thead>
+<tbody>
+<tr><th>Performance P moyenne</th><td class="best">39,4 %</td><td>22,5 %</td><td>31,5 %</td></tr>
+<tr><th>Faux positifs</th><td>moyens</td><td>très nombreux</td><td class="best">les plus faibles</td></tr>
+<tr><th>Faux négatifs</th><td>moyens</td><td class="best">les plus faibles</td><td>les plus élevés</td></tr>
+<tr><th>Localisation / épaisseur</th><td>bandes de 2 à 4 px</td><td>contours doubles</td><td class="best">1 px, bien centrés</td></tr>
+<tr><th>Sensibilité au bruit</th><td>moyenne</td><td>forte</td><td class="best">faible (hystérésis)</td></tr>
+<tr><th>Réglage</th><td class="best">simple (1 seuil relatif)</td><td>simple (1 seuil relatif)</td><td>2 seuils absolus, liés au flou</td></tr>
+<tr><th>Coût de calcul</th><td>2 convolutions</td><td class="best">1 convolution</td><td>le plus élevé</td></tr>
+</tbody>
+</table>
+<p style="text-align:center;font-size:9pt;color:#555">Tableau 4 — Comparaison qualitative et quantitative des trois détecteurs.</p>
+
+<h2>9. Conclusion</h2>
+<p>Nous avons programmé et évalué trois détecteurs de contours sur les 40 images de la base RUG. Avec la mesure du sujet et une tolérance 3×3, Sobel obtient la meilleure performance (39,4 %), devant Canny (31,5 %) et Laplace (22,5 %). Canny offre la meilleure localisation et le moins de faux positifs, alors que Laplace est très sensible au bruit et à la texture.</p>
+<p>L'étude des paramètres montre que le lissage gaussien est indispensable, que le seuil règle le compromis entre faux positifs et faux négatifs, et qu'un réglage global est presque aussi bon qu'un réglage par image. Les performances restent modestes dans l'absolu : la principale difficulté est la texture du fond, que tous les détecteurs locaux détectent mais que la référence ignore. Pour aller plus loin, il faudrait des méthodes qui intègrent une information plus globale : contours multi-échelles, suppression de la texture, ou détecteurs appris.</p>
+
+<h2 class="saut">10. Annexe : résultats détaillés par image</h2>
+<table class="petit">
+<thead>
+<tr><th rowspan="2">image</th><th colspan="3">Sobel (%)</th><th colspan="3">Laplace (%)</th><th colspan="3">Canny (%)</th></tr>
+<tr><th>P</th><th>TFP</th><th>TFN</th><th>P</th><th>TFP</th><th>TFN</th><th>P</th><th>TFP</th><th>TFN</th></tr>
+</thead>
+<tbody><tr><th>basket</th><td class='best'>21,2</td><td>72,2</td><td>6,6</td><td class=''>11,3</td><td>86,8</td><td>1,9</td><td class=''>19,9</td><td>60,4</td><td>19,8</td></tr><tr><th>bear</th><td class='best'>35,1</td><td>58,4</td><td>6,5</td><td class=''>8,3</td><td>90,7</td><td>1,0</td><td class=''>34,0</td><td>37,6</td><td>28,4</td></tr><tr><th>bear_2</th><td class='best'>41,5</td><td>26,1</td><td>32,4</td><td class=''>22,6</td><td>41,5</td><td>35,9</td><td class=''>27,1</td><td>12,6</td><td>60,3</td></tr><tr><th>bear_3</th><td class='best'>24,5</td><td>54,7</td><td>20,8</td><td class=''>9,2</td><td>63,4</td><td>27,5</td><td class=''>18,8</td><td>48,6</td><td>32,6</td></tr><tr><th>bear_4</th><td class='best'>23,1</td><td>72,5</td><td>4,4</td><td class=''>12,8</td><td>82,2</td><td>5,0</td><td class=''>16,1</td><td>77,5</td><td>6,4</td></tr><tr><th>bear_5</th><td class=''>27,9</td><td>58,3</td><td>13,7</td><td class=''>12,3</td><td>81,8</td><td>5,9</td><td class='best'>29,3</td><td>39,2</td><td>31,4</td></tr><tr><th>bear_6</th><td class='best'>14,6</td><td>70,5</td><td>14,9</td><td class=''>7,8</td><td>73,3</td><td>18,9</td><td class=''>11,5</td><td>71,3</td><td>17,1</td></tr><tr><th>bear_7</th><td class='best'>9,8</td><td>84,9</td><td>5,4</td><td class=''>5,1</td><td>88,0</td><td>6,9</td><td class=''>8,4</td><td>84,9</td><td>6,7</td></tr><tr><th>bear_8</th><td class='best'>19,1</td><td>63,9</td><td>17,0</td><td class=''>6,2</td><td>87,5</td><td>6,3</td><td class=''>10,9</td><td>75,5</td><td>13,5</td></tr><tr><th>bears</th><td class='best'>33,4</td><td>55,6</td><td>10,9</td><td class=''>14,3</td><td>78,8</td><td>6,9</td><td class=''>30,6</td><td>50,1</td><td>19,2</td></tr><tr><th>brush</th><td class='best'>29,1</td><td>41,8</td><td>29,1</td><td class=''>21,4</td><td>63,8</td><td>14,8</td><td class=''>21,8</td><td>25,8</td><td>52,4</td></tr><tr><th>buffalo</th><td class='best'>59,6</td><td>18,7</td><td>21,8</td><td class=''>30,6</td><td>59,4</td><td>10,0</td><td class=''>49,3</td><td>25,9</td><td>24,8</td></tr><tr><th>buffalo_2</th><td class='best'>44,0</td><td>32,9</td><td>23,1</td><td class=''>25,0</td><td>56,9</td><td>18,1</td><td class=''>35,2</td><td>41,6</td><td>23,3</td></tr><tr><th>elephant</th><td class='best'>52,2</td><td>8,7</td><td>39,1</td><td class=''>34,1</td><td>32,5</td><td>33,4</td><td class=''>43,2</td><td>10,3</td><td>46,5</td></tr><tr><th>elephant_2</th><td class='best'>46,6</td><td>9,6</td><td>43,8</td><td class=''>26,8</td><td>26,3</td><td>46,9</td><td class=''>27,1</td><td>3,4</td><td>69,5</td></tr><tr><th>elephant_3</th><td class='best'>49,9</td><td>8,7</td><td>41,4</td><td class=''>32,4</td><td>34,6</td><td>33,0</td><td class=''>43,3</td><td>5,9</td><td>50,8</td></tr><tr><th>elephant_4</th><td class='best'>43,8</td><td>21,1</td><td>35,1</td><td class=''>38,5</td><td>46,4</td><td>15,1</td><td class=''>40,0</td><td>24,5</td><td>35,5</td></tr><tr><th>elephants</th><td class='best'>51,1</td><td>18,6</td><td>30,3</td><td class=''>44,2</td><td>42,5</td><td>13,4</td><td class=''>40,8</td><td>16,0</td><td>43,2</td></tr><tr><th>elephants_2</th><td class=''>30,9</td><td>5,4</td><td>63,7</td><td class=''>25,1</td><td>36,0</td><td>38,9</td><td class='best'>36,9</td><td>12,5</td><td>50,6</td></tr><tr><th>gazelle</th><td class='best'>43,1</td><td>18,3</td><td>38,5</td><td class=''>28,9</td><td>65,2</td><td>5,9</td><td class=''>33,3</td><td>19,0</td><td>47,7</td></tr><tr><th>gazelle_2</th><td class='best'>37,9</td><td>22,5</td><td>39,6</td><td class=''>26,1</td><td>64,0</td><td>9,9</td><td class=''>29,6</td><td>44,6</td><td>25,8</td></tr><tr><th>gnu</th><td class='best'>54,2</td><td>36,5</td><td>9,3</td><td class=''>20,2</td><td>75,0</td><td>4,8</td><td class=''>50,5</td><td>30,7</td><td>18,8</td></tr><tr><th>gnu_2</th><td class='best'>42,2</td><td>30,0</td><td>27,8</td><td class=''>22,2</td><td>56,3</td><td>21,5</td><td class=''>31,9</td><td>20,5</td><td>47,5</td></tr><tr><th>goat</th><td class='best'>47,6</td><td>29,0</td><td>23,4</td><td class=''>36,4</td><td>55,4</td><td>8,3</td><td class=''>36,1</td><td>22,9</td><td>41,0</td></tr><tr><th>goat_2</th><td class='best'>32,2</td><td>26,4</td><td>41,5</td><td class=''>18,5</td><td>76,7</td><td>4,7</td><td class=''>30,8</td><td>46,2</td><td>23,0</td></tr><tr><th>goat_3</th><td class='best'>41,0</td><td>38,7</td><td>20,3</td><td class=''>14,0</td><td>84,2</td><td>1,8</td><td class=''>30,8</td><td>43,7</td><td>25,4</td></tr><tr><th>goat_4</th><td class='best'>45,2</td><td>43,6</td><td>11,2</td><td class=''>20,5</td><td>65,7</td><td>13,8</td><td class=''>43,6</td><td>22,9</td><td>33,5</td></tr><tr><th>goat_5</th><td class='best'>27,4</td><td>56,8</td><td>15,8</td><td class=''>10,7</td><td>78,8</td><td>10,5</td><td class=''>17,8</td><td>13,6</td><td>68,6</td></tr><tr><th>goat_6</th><td class='best'>35,5</td><td>48,1</td><td>16,4</td><td class=''>11,7</td><td>85,1</td><td>3,3</td><td class=''>18,4</td><td>74,8</td><td>6,7</td></tr><tr><th>goat_7</th><td class='best'>43,6</td><td>44,6</td><td>11,8</td><td class=''>21,2</td><td>74,9</td><td>3,9</td><td class=''>28,0</td><td>60,0</td><td>12,0</td></tr><tr><th>goat_8</th><td class='best'>35,7</td><td>38,3</td><td>26,0</td><td class=''>17,9</td><td>68,8</td><td>13,2</td><td class=''>29,8</td><td>50,2</td><td>20,0</td></tr><tr><th>golfcart</th><td class='best'>63,6</td><td>13,0</td><td>23,5</td><td class=''>47,4</td><td>33,9</td><td>18,7</td><td class=''>52,3</td><td>12,2</td><td>35,5</td></tr><tr><th>hyena</th><td class='best'>66,2</td><td>23,6</td><td>10,2</td><td class=''>37,0</td><td>60,0</td><td>3,0</td><td class=''>52,6</td><td>30,8</td><td>16,6</td></tr><tr><th>lions</th><td class='best'>46,5</td><td>37,1</td><td>16,4</td><td class=''>33,6</td><td>54,0</td><td>12,4</td><td class=''>35,8</td><td>34,6</td><td>29,6</td></tr><tr><th>rino</th><td class='best'>42,8</td><td>37,3</td><td>19,9</td><td class=''>18,2</td><td>69,4</td><td>12,4</td><td class=''>31,2</td><td>2,6</td><td>66,1</td></tr><tr><th>rino_2</th><td class='best'>32,4</td><td>58,0</td><td>9,6</td><td class=''>17,6</td><td>76,4</td><td>6,0</td><td class=''>23,9</td><td>63,0</td><td>13,1</td></tr><tr><th>rino_3</th><td class='best'>40,6</td><td>40,0</td><td>19,4</td><td class=''>19,2</td><td>75,8</td><td>5,0</td><td class=''>26,7</td><td>57,2</td><td>16,0</td></tr><tr><th>tiger</th><td class='best'>43,4</td><td>40,4</td><td>16,2</td><td class=''>23,2</td><td>73,0</td><td>3,7</td><td class=''>33,1</td><td>28,8</td><td>38,1</td></tr><tr><th>tire</th><td class='best'>52,7</td><td>19,9</td><td>27,4</td><td class=''>34,8</td><td>41,8</td><td>23,3</td><td class=''>43,5</td><td>14,0</td><td>42,5</td></tr><tr><th>turtle</th><td class='best'>46,4</td><td>25,9</td><td>27,7</td><td class=''>34,6</td><td>47,2</td><td>18,3</td><td class=''>34,3</td><td>26,7</td><td>39,0</td></tr><tr class='moy'><th>moyenne</th><td>39,4</td><td>37,8</td><td>22,8</td><td>22,5</td><td>63,8</td><td>13,6</td><td>31,5</td><td>36,1</td><td>32,5</td></tr></tbody>
+</table>
+<p style="text-align:center;font-size:9pt;color:#555">Tableau 5 — Mesures par image (meilleur P de chaque ligne en vert). Les 5 quantités brutes sont dans <code>results/batch/resultats.csv</code>.</p>
+
+<h3>Reproduction</h3>
+<pre>cd TP_contours
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+./build/tp_contours            # mode interactif (trackbars)
+./build/tp_contours --batch    # lot de 40 images -> results/batch, results/comparaison
+python3 scripts/balayage.py    # étude des paramètres -> results/parametres</pre>
+</body>
+</html>

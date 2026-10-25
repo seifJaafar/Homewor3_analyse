@@ -1,0 +1,40 @@
+# --- Build (CMake / Ninja) ---
+build/
+out/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+.ninja_deps
+.ninja_log
+build.ninja
+Makefile
+
+# --- Compiled files ---
+*.o
+*.obj
+*.exe
+*.out
+*.a
+*.lib
+*.so
+*.dll
+*.dylib
+*.pdb
+*.ilk
+
+# --- IDE / editor ---
+.vscode/
+.idea/
+.vs/
+*.swp
+*~
+
+# --- OS ---
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# --- Generated results (uncomment to stop tracking them) ---
+# TP_contours/results/
