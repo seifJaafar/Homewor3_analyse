@@ -3,6 +3,8 @@
 Comparaison quantitative de trois détecteurs de contours sur les 40 images de la base RUG
 (contours de référence tracés à la main), avec les mesures P, TFP et TFN.
 
+Le rapport est `rapport.pdf`, à la racine du dépôt.
+
 ## Contenu de `TP_contours/`
 
 | Dossier / fichier | Contenu |
@@ -14,9 +16,6 @@ Comparaison quantitative de trois détecteurs de contours sur les 40 images de l
 | `results/comparaison/` | Montages original / référence / Sobel / Laplace / Canny |
 | `results/parametres/` | Étude de l'influence des paramètres (courbes + `balayage.csv`) |
 | `scripts/balayage.py` | Script de l'étude des paramètres |
-| `rapport/rapport.pdf` | Le rapport |
-| `video/TP_contours_video.mp4` | La vidéo de présentation |
-| `video/script_video.md` | Le texte de la vidéo, minuté |
 
 ## Utilisation
 
